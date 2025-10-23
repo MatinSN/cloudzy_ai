@@ -1,0 +1,1 @@
+"""Cloudzy AI - Cloud photo management service"""
