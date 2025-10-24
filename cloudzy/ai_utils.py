@@ -1,72 +1,73 @@
-"""AI utilities for generating tags, captions, and embeddings"""
+import os
 import numpy as np
-from typing import List, Tuple
-import random
+from huggingface_hub import InferenceClient
 
+from dotenv import load_dotenv
+load_dotenv()
 
-def generate_tags(filename: str) -> List[str]:
-    """
-    Generate tags for an image based on filename.
-    In production, this would use CLIP or similar models.
-    Currently using placeholder logic.
-    """
-    # Extract meaningful words from filename
-    name_parts = filename.lower().replace("_", " ").replace("-", " ").split()
-    name_parts = [p.replace(".jpg", "").replace(".png", "").replace(".jpeg", "") 
-                  for p in name_parts if p]
+class ImageEmbeddingGenerator:
+    def __init__(self, model_name: str = "intfloat/multilingual-e5-large"):
+        """
+        Initialize the embedding generator with a Hugging Face model.
+        """
+        self.client = InferenceClient(
+            provider="hf-inference",
+            api_key=os.environ["HF_TOKEN_1"],
+        )
+        self.model_name = model_name
+
+    def generate_embedding(self, tags: list[str], description: str, caption: str) -> np.ndarray:
+        """
+        Generate a 512-d embedding for an image using its tags, description, and caption.
+
+        Args:
+            tags: List of tags related to the image
+            description: Long descriptive text of the image
+            caption: Short caption for the image
+
+        Returns:
+            embedding: 1D numpy array of shape (512,)
+        """
+        # Combine text fields into a single string
+        text = " ".join(tags) + " " + description + " " + caption
+        
+        # Request embedding from Hugging Face
+        result = self.client.feature_extraction(
+            text,
+            model=self.model_name,
+        )
+        
+        # Convert to numpy array
+        embedding = np.array(result, dtype=np.float32).reshape(-1)
+        
+        # Ensure shape is (512,)
+        if embedding.shape[0] != 1024:
+            raise ValueError(f"Expected embedding of size 512, got {embedding.shape[0]}")
+        
+        return embedding
     
-    # Common image tags for demo
-    common_tags = [
-        "photo", "image", "landscape", "portrait", "nature", "architecture",
-        "people", "animal", "food", "object", "abstract", "text", "sunset",
-        "mountain", "beach", "forest", "urban", "indoor", "outdoor"
-    ]
+
+    def _embed_text(self, text: str) -> np.ndarray:
+        """
+        Internal helper to call Hugging Face feature_extraction and return a numpy array.
+        """
+        result = self.client.feature_extraction(
+            text,
+            model=self.model_name,
+        )
+        embedding = np.array(result, dtype=np.float32).reshape(-1)
+
+        if embedding.shape[0] != 1024:
+            raise ValueError(f"Expected embedding of size 1024, got {embedding.shape[0]}")
+        return embedding
+
+# Example usage:
+if __name__ == "__main__":
+    generator = ImageEmbeddingGenerator()
     
-    # Select random subset of common tags + filename parts
-    tags = list(set(name_parts[:2] + random.sample(common_tags, min(3, len(common_tags)))))
-    return tags[:5]  # Return up to 5 tags
-
-
-def generate_caption(filename: str, tags: List[str]) -> str:
-    """
-    Generate a caption for an image.
-    In production, this would use BLIP or similar models.
-    Currently using placeholder logic.
-    """
-    caption_templates = [
-        "A beautiful {tag} photograph",
-        "Captured moment: {tag}",
-        "Scenic view of {tag}",
-        "Amazing {tag} scene",
-        "Photography: {tag} collection",
-    ]
+    tags = ["nature", "sun", "ice cream"]
+    description = "A sunny day in the park with children enjoying ice cream."
+    caption = "Sunny day with ice cream."
     
-    tag = tags[0] if tags else "image"
-    template = random.choice(caption_templates)
-    return template.format(tag=tag)
-
-
-def generate_embedding(filename: str, tags: List[str], caption: str) -> np.ndarray:
-    """
-    Generate a 512-dimensional embedding for semantic search.
-    In production, this would use CLIP or similar models.
-    Currently using placeholder random embeddings (reproducible from filename).
-    """
-    # Create a reproducible random embedding based on filename
-    # In production: use CLIP or similar to generate real embeddings
-    random.seed(hash(filename) % (2**32))
-    embedding = np.random.randn(512).astype(np.float32)
-    # Normalize to unit vector
-    embedding = embedding / np.linalg.norm(embedding)
-    return embedding
-
-
-def generate_filename_embedding(filename: str) -> np.ndarray:
-    """
-    Generate a deterministic embedding from filename for testing.
-    Ensures same filename always gets same embedding.
-    """
-    random.seed(hash(filename) % (2**32))
-    embedding = np.random.randn(512).astype(np.float32)
-    embedding = embedding / np.linalg.norm(embedding)
-    return embedding
+    embedding = generator.generate_embedding(tags, description, caption)
+    print("Embedding shape:", embedding.shape)

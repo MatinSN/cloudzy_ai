@@ -45,6 +45,9 @@ faiss_index.bin
 *.log
 logs/
 
+*.npy
+*.ids
+
 # Testing
 .pytest_cache/
 .coverage

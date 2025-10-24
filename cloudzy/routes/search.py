@@ -7,7 +7,9 @@ from cloudzy.database import get_session
 from cloudzy.models import Photo
 from cloudzy.schemas import SearchResponse, SearchResult
 from cloudzy.search_engine import SearchEngine
-from cloudzy.ai_utils import generate_filename_embedding
+# from cloudzy.ai_utils import generate_filename_embedding
+from cloudzy.ai_utils import  ImageEmbeddingGenerator
+import os
 
 router = APIRouter(tags=["search"])
 
@@ -29,12 +31,16 @@ async def search_photos(
     
     Returns: List of similar photos with distance scores
     """
-    # Generate embedding for query
-    query_embedding = generate_filename_embedding(q)
+
+    generator = ImageEmbeddingGenerator()
+    query_embedding = generator._embed_text(q)
+
+
     
     # Search in FAISS
     search_engine = SearchEngine()
     search_results = search_engine.search(query_embedding, top_k=top_k)
+    
     
     if not search_results:
         return SearchResponse(
@@ -42,6 +48,10 @@ async def search_photos(
             results=[],
             total_results=0,
         )
+    
+    APP_DOMAIN = os.getenv("APP_DOMAIN")
+
+    
     
     # Fetch photo details from database
     result_objects = []
@@ -54,6 +64,7 @@ async def search_photos(
                 SearchResult(
                     photo_id=photo.id,
                     filename=photo.filename,
+                    image_url = f"{APP_DOMAIN}uploads/{photo.filename}",
                     tags=photo.get_tags(),
                     caption=photo.caption,
                     distance=distance,

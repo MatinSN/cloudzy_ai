@@ -10,3 +10,4 @@ python-multipart==0.0.6
 pydantic==2.6.1
 pydantic-settings==2.1.0
 setuptools>=68.0
+openai==2.6.0

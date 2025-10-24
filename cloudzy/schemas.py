@@ -25,6 +25,7 @@ class SearchResult(BaseModel):
     """Search result with similarity score"""
     photo_id: int
     filename: str
+    image_url: str
     tags: List[str]
     caption: str
     distance: float  # L2 distance (lower is more similar)
@@ -44,6 +45,7 @@ class UploadResponse(BaseModel):
     """Response after uploading a photo"""
     id: int
     filename: str
+    image_url: str
     tags: List[str]
     caption: str
     message: str

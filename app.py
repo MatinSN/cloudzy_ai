@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
-
+from dotenv import load_dotenv
 
 from cloudzy.database import create_db_and_tables
 from cloudzy.routes import upload, photo, search
@@ -12,7 +12,7 @@ import os
 
 # Initialize search engine at startup
 search_engine = None
-
+load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
