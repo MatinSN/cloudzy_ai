@@ -39,6 +39,7 @@ faiss_index.bin
 *.db-journal
 .env
 .env.local
+.env.example
 
 # Logs
 *.log

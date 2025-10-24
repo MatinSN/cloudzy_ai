@@ -2,10 +2,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from fastapi.staticfiles import StaticFiles
+
 
 from cloudzy.database import create_db_and_tables
 from cloudzy.routes import upload, photo, search
 from cloudzy.search_engine import SearchEngine
+import os
 
 # Initialize search engine at startup
 search_engine = None
@@ -52,6 +55,12 @@ app.add_middleware(
 app.include_router(upload.router)
 app.include_router(photo.router)
 app.include_router(search.router)
+
+UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Mount static file serving
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
 @app.get("/", tags=["info"])
