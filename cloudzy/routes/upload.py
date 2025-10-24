@@ -104,12 +104,14 @@ async def upload_photo(
     image_url = f"{APP_DOMAIN}uploads/{saved_filename}"
 
     try:
+
+        print("image_url is",image_url)
         
         describer = ImageDescriber()
         # result = describer.describe_image("https://userx2000-cloudzy-ai-challenge.hf.space/uploads/img_1_20251024_064435_667.jpg")
         # result = describer.describe_image("https://userx2000-cloudzy-ai-challenge.hf.space/uploads/img_2_20251024_082115_102.jpeg")
         result = describer.describe_image(image_url)
-
+       
         
 
     except Exception as e:
