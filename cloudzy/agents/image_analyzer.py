@@ -46,6 +46,7 @@ result: {
   "caption": "a short description for the image"
 }
 """
+        
 
         # Send request
         completion = self.client.chat.completions.create(

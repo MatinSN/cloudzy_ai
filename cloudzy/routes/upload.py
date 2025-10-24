@@ -12,6 +12,7 @@ from cloudzy.ai_utils import  ImageEmbeddingGenerator
 from cloudzy.search_engine import SearchEngine
 
 from cloudzy.agents.image_analyzer import ImageDescriber
+from cloudzy.utils.file_upload_service import ImgBBUploader
 
 
 import os
@@ -61,8 +62,8 @@ def validate_image_file(filename: str) -> bool:
     """Check if file has valid image extension"""
     return Path(filename).suffix.lower() in ALLOWED_EXTENSIONS
 
-# response_model=UploadResponse
-@router.post("/upload")
+
+@router.post("/upload", response_model=UploadResponse)
 async def upload_photo(
     file: UploadFile = File(...),
     session: Session = Depends(get_session),
@@ -99,29 +100,32 @@ async def upload_photo(
     filepath = f"uploads/{saved_filename}"
 
 
-    APP_DOMAIN = os.getenv("APP_DOMAIN")
-
-
-    image_url = f"{APP_DOMAIN}uploads/{saved_filename}"
-
 
 
     try:
+        uploader = ImgBBUploader(expiration=600)
+        image_url = uploader.upload(filepath)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Image upload failed: {str(e)}")
+    
 
-        
-        
+
+    try:
+          
         describer = ImageDescriber()
         # result = describer.describe_image("https://userx2000-cloudzy-ai-challenge.hf.space/uploads/img_1_20251024_064435_667.jpg")
         # result = describer.describe_image("https://userx2000-cloudzy-ai-challenge.hf.space/uploads/img_2_20251024_082115_102.jpeg")
         result = describer.describe_image(image_url)
        
         
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
     
 
-    return result
+    APP_DOMAIN = os.getenv("APP_DOMAIN")
+
+    image_url = f"{APP_DOMAIN}uploads/{saved_filename}"
+
     
     # Generate AI analysis
     tags = result.get("tags", [])
