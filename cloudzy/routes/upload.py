@@ -101,15 +101,14 @@ async def upload_photo(
 
     APP_DOMAIN = os.getenv("APP_DOMAIN")
 
-    print("APP_DOMAINXXXXX",APP_DOMAIN)
 
     image_url = f"{APP_DOMAIN}uploads/{saved_filename}"
-    return image_url
+
 
 
     try:
 
-        print("image_url is",image_url)
+        
         
         describer = ImageDescriber()
         # result = describer.describe_image("https://userx2000-cloudzy-ai-challenge.hf.space/uploads/img_1_20251024_064435_667.jpg")
@@ -120,6 +119,9 @@ async def upload_photo(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+    
+
+    return result
     
     # Generate AI analysis
     tags = result.get("tags", [])
