@@ -62,6 +62,55 @@ def validate_image_file(filename: str) -> bool:
     """Check if file has valid image extension"""
     return Path(filename).suffix.lower() in ALLOWED_EXTENSIONS
 
+def process_image_in_background(photo_id: int, filepath: str, image_url: str):
+    """
+    Background task to:
+    - Describe the image
+    - Generate embedding
+    - Update database record
+    - Index embedding in FAISS
+    """
+    from cloudzy.database import SessionLocal
+    from sqlmodel import select
+    
+    try:
+        describer = ImageDescriber()
+        print(f"[Background] Processing image {photo_id}...")
+        result = describer.describe_image(image_url)
+
+        tags = result.get("tags", [])
+        caption = result.get("caption", "")
+        description = result.get("description", "")
+
+        generator = ImageEmbeddingGenerator()
+        embedding = generator.generate_embedding(tags, description, caption)
+
+        # Use a fresh session for background task
+        session = SessionLocal()
+        try:
+            photo = session.exec(select(Photo).where(Photo.id == photo_id)).first()
+            if photo:
+                photo.caption = caption
+                photo.set_tags(tags)
+                photo.set_embedding(embedding.tolist())
+                session.add(photo)
+                session.commit()
+                print(f"[Background] Photo {photo_id} updated with embedding")
+            else:
+                print(f"[Background] Photo {photo_id} not found in database")
+        finally:
+            session.close()
+        
+        # Index in FAISS
+        search_engine = SearchEngine()
+        search_engine.add_embedding(photo_id, embedding)
+        print(f"[Background] Photo {photo_id} indexed in FAISS")
+
+    except Exception as e:
+        print(f"[Background Task] Error processing image {photo_id}: {e}")
+        import traceback
+        traceback.print_exc()
+
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_photo(
@@ -69,18 +118,7 @@ async def upload_photo(
     session: Session = Depends(get_session),
     background_tasks: BackgroundTasks = None,
 ):
-    """
-    Upload a photo and analyze it with AI.
-    
-    - Validates file type
-    - Saves file to disk
-    - Generates tags, caption, and embedding
-    - Stores metadata in database
-    - Indexes embedding in FAISS
-    
-    Returns: Photo metadata with ID
-    """
-    # Validate file
+    # --- Validate and save file ---
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
     
@@ -90,79 +128,44 @@ async def upload_photo(
             detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
         )
     
-    # Read file content
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="Empty file")
     
-    # Save file to disk
     saved_filename = save_uploaded_file(content, file.filename)
     filepath = f"uploads/{saved_filename}"
-
-
-
 
     try:
         uploader = ImgBBUploader(expiration=600)
         image_url = uploader.upload(filepath)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image upload failed: {str(e)}")
-    
-
-
-    try:
-          
-        describer = ImageDescriber()
-        # result = describer.describe_image("https://userx2000-cloudzy-ai-challenge.hf.space/uploads/img_1_20251024_064435_667.jpg")
-        # result = describer.describe_image("https://userx2000-cloudzy-ai-challenge.hf.space/uploads/img_2_20251024_082115_102.jpeg")
-        result = describer.describe_image(image_url)
-       
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
-    
 
     APP_DOMAIN = os.getenv("APP_DOMAIN")
+    image_local_url = f"{APP_DOMAIN}uploads/{saved_filename}"
 
-    image_url = f"{APP_DOMAIN}uploads/{saved_filename}"
-
-    
-    # Generate AI analysis
-    tags = result.get("tags", [])
-    caption = result.get("caption", "")
-    description = result.get("description", "")
-
-    
-
-    generator = ImageEmbeddingGenerator()
-    embedding = generator.generate_embedding(tags, description, caption)
-
-    # np.save("embedding_2.npy", embedding)
-    # embedding = np.load("embedding_2.npy") 
-    
-    # Create photo record
+    # --- Save photo immediately with empty caption/tags ---
     photo = Photo(
         filename=saved_filename,
         filepath=filepath,
-        caption=caption,
+        caption="",  # empty for now
     )
-    photo.set_tags(tags)
-    # photo.set_embedding(embedding.tolist())
-    
-    # Save to database
     session.add(photo)
     session.commit()
     session.refresh(photo)
-    
-    # Index in FAISS (in background if needed)
-    search_engine = SearchEngine()
-    search_engine.add_embedding(photo.id, embedding)
-    
+
+    # --- Schedule background task ---
+    if background_tasks:
+        background_tasks.add_task(
+            process_image_in_background,
+            photo_id=photo.id,
+            filepath=filepath,
+            image_url=image_url
+        )
+
     return UploadResponse(
         id=photo.id,
         filename=saved_filename,
-        image_url= image_url,
-        tags=tags,
-        caption=caption,
-        message=f"Photo uploaded successfully with ID {photo.id}"
+        image_url=image_local_url,
+        message=f"Photo uploaded successfully with ID {photo.id}. AI processing is running in the background."
     )

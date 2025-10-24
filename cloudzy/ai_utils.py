@@ -61,6 +61,47 @@ class ImageEmbeddingGenerator:
             raise ValueError(f"Expected embedding of size 1024, got {embedding.shape[0]}")
         return embedding
 
+
+class TextSummarizer:
+    def __init__(self, model_name: str = "facebook/bart-large-cnn"):
+        """
+        Initialize the text summarizer with a Hugging Face model.
+        """
+        self.client = InferenceClient(
+            provider="hf-inference",
+            api_key=os.environ["HF_TOKEN_1"],
+        )
+        self.model_name = model_name
+
+    def summarize(self, text: str) -> str:
+        """
+        Generate a summary of the given text.
+        
+        Args:
+            text: Text to summarize
+            
+        Returns:
+            summary: Generated summary string
+        """
+        if not text or text.strip() == "":
+            return "Album of photos"
+        
+        try:
+            result = self.client.summarization(
+                text,
+                model=self.model_name,
+            )
+            # Extract the summary text from the result object
+            if isinstance(result, list) and len(result) > 0:
+                return result[0].get("summary_text", str(result[0]))
+            elif isinstance(result, dict):
+                return result.get("summary_text", str(result))
+            else:
+                return str(result)
+        except Exception as e:
+            # Fallback if summarization fails
+            return f"Collection: {text[:80]}..."
+
 # Example usage:
 if __name__ == "__main__":
     generator = ImageEmbeddingGenerator()

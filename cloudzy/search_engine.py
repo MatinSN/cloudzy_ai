@@ -19,6 +19,72 @@ class SearchEngine:
             base_index = faiss.IndexFlatL2(dim)
             self.index = faiss.IndexIDMap(base_index)
 
+    def create_albums(self, top_k: int = 5, distance_threshold: float = 0.3) -> List[List[int]]:
+        """
+        Group similar images into albums (clusters).
+        
+        For each unvisited photo, finds its top_k most similar photos and creates an album.
+        Photos are marked as visited to avoid duplicate albums.
+        Only includes photos within the distance threshold.
+        
+        Args:
+            top_k: Number of similar images to find for each album
+            distance_threshold: Maximum distance to consider photos as similar (default 0.5)
+            
+        Returns:
+            List of albums, each album is a list of photo_ids
+        """
+        from cloudzy.database import SessionLocal
+        from cloudzy.models import Photo
+        from sqlmodel import select
+        
+        self.load()
+        if self.index.ntotal == 0:
+            return []
+
+        # Get all photo IDs from FAISS index
+        id_map = self.index.id_map
+        all_ids = [id_map.at(i) for i in range(id_map.size())]
+
+        visited = set()
+        albums = []
+
+        for photo_id in all_ids:
+            # Skip if already in an album
+            if photo_id in visited:
+                continue
+            
+            # Get embedding from database
+            session = SessionLocal()
+            try:
+                photo = session.exec(select(Photo).where(Photo.id == photo_id)).first()
+                if not photo:
+                    continue
+                
+                embedding = photo.get_embedding()
+                if not embedding:
+                    continue
+                
+                # Search for similar images
+                query_embedding = np.array(embedding).reshape(1, -1).astype(np.float32)
+                distances, ids = self.index.search(query_embedding, top_k)
+                
+                # Build album: collect similar photos that haven't been visited and are within threshold
+                album = []
+                for pid, distance in zip(ids[0], distances[0]):
+                    if pid != -1 and pid not in visited and distance <= distance_threshold:
+                        album.append(int(pid))
+                        visited.add(pid)
+                
+                # Add album if it has at least 1 photo
+                if album:
+                    albums.append(album)
+                    
+            finally:
+                session.close()
+        
+        return albums
+
     def add_embedding(self, photo_id: int, embedding: np.ndarray) -> None:
         """
         Add an embedding to the index.

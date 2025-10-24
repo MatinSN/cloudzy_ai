@@ -51,7 +51,6 @@ class ImgBBUploader:
             )
             resp.raise_for_status()
             data = resp.json()
-            print(data)
             if data.get("success"):
                 return data["data"]["url"]
             raise RuntimeError(f"Upload failed: {data}")

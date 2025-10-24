@@ -42,7 +42,7 @@ Describe this image in the following exact format:
 
 result: {
   "tags": [list of tags related to the image],
-  "description": "a 10-line descriptive description for the image",
+  "description": "a 5-line descriptive description for the image",
   "caption": "a short description for the image"
 }
 """

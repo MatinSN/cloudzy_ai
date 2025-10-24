@@ -8,6 +8,7 @@ class PhotoResponse(BaseModel):
     """Response model for photo metadata"""
     id: int
     filename: str
+    image_url: str
     tags: List[str]
     caption: str
     created_at: datetime
@@ -19,6 +20,7 @@ class PhotoResponse(BaseModel):
 class PhotoDetailResponse(PhotoResponse):
     """Detailed photo response with embedding info"""
     embedding: Optional[List[float]] = None
+
 
 
 class SearchResult(BaseModel):
@@ -46,6 +48,21 @@ class UploadResponse(BaseModel):
     id: int
     filename: str
     image_url: str
+    # tags: List[str]
+    # caption: str
+    message: str
+
+
+class PhotoItem(BaseModel):
+    photo_id: int
+    filename: str
+    image_url: str
     tags: List[str]
     caption: str
-    message: str
+    distance: float
+
+class AlbumItem(BaseModel):
+    album_summary: str
+    album: List[PhotoItem]
+
+AlbumsResponse = List[AlbumItem]

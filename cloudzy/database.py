@@ -14,6 +14,10 @@ engine = create_engine(
     connect_args=connect_args,
 )
 
+# Session factory for manual session creation
+def SessionLocal():
+    return Session(engine)
+
 
 def create_db_and_tables():
     """Create all database tables"""
