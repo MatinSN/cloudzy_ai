@@ -113,7 +113,7 @@ async def upload_photo(
         describer = ImageDescriber()
         # result = describer.describe_image("https://userx2000-cloudzy-ai-challenge.hf.space/uploads/img_1_20251024_064435_667.jpg")
         # result = describer.describe_image("https://userx2000-cloudzy-ai-challenge.hf.space/uploads/img_2_20251024_082115_102.jpeg")
-        result = describer.describe_image("https://cdn.britannica.com/61/93061-050-99147DCE/Statue-of-Liberty-Island-New-York-Bay.jpg")
+        result = describer.describe_image(image_url)
        
         
 
