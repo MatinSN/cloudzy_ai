@@ -61,8 +61,8 @@ def validate_image_file(filename: str) -> bool:
     """Check if file has valid image extension"""
     return Path(filename).suffix.lower() in ALLOWED_EXTENSIONS
 
-
-@router.post("/upload", response_model=UploadResponse)
+# response_model=UploadResponse
+@router.post("/upload")
 async def upload_photo(
     file: UploadFile = File(...),
     session: Session = Depends(get_session),
@@ -100,6 +100,9 @@ async def upload_photo(
 
 
     APP_DOMAIN = os.getenv("APP_DOMAIN")
+
+    print("APP_DOMAINXXXXX",APP_DOMAIN)
+    return APP_DOMAIN
 
     image_url = f"{APP_DOMAIN}uploads/{saved_filename}"
 
