@@ -102,9 +102,10 @@ async def upload_photo(
     APP_DOMAIN = os.getenv("APP_DOMAIN")
 
     print("APP_DOMAINXXXXX",APP_DOMAIN)
-    return APP_DOMAIN
 
     image_url = f"{APP_DOMAIN}uploads/{saved_filename}"
+    return image_url
+
 
     try:
 
