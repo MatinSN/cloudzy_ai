@@ -12,6 +12,7 @@ from cloudzy.ai_utils import  ImageEmbeddingGenerator
 from cloudzy.search_engine import SearchEngine
 
 from cloudzy.agents.image_analyzer import ImageDescriber
+from cloudzy.agents.image_analyzer_2 import ImageAnalyzerAgent
 from cloudzy.utils.file_upload_service import ImgBBUploader
 
 
@@ -62,10 +63,11 @@ def validate_image_file(filename: str) -> bool:
     """Check if file has valid image extension"""
     return Path(filename).suffix.lower() in ALLOWED_EXTENSIONS
 
-def process_image_in_background(photo_id: int, filepath: str, image_url: str):
+def process_image_in_background(photo_id: int, filepath: str):
     """
     Background task to:
-    - Describe the image
+    - Analyze image metadata (primary method using local file)
+    - Fallback to ImgBB upload + ImageDescriber if metadata analysis fails
     - Generate embedding
     - Update database record
     - Index embedding in FAISS
@@ -74,9 +76,30 @@ def process_image_in_background(photo_id: int, filepath: str, image_url: str):
     from sqlmodel import select
     
     try:
-        describer = ImageDescriber()
-        print(f"[Background] Processing image {photo_id}...")
-        result = describer.describe_image(image_url)
+        result = None
+        
+        # --- Primary method: Analyze metadata from local filepath ---
+        try:
+            print(f"[Background] Analyzing image metadata locally for photo {photo_id}...")
+            analyzer = ImageAnalyzerAgent()
+            result = analyzer.analyze_image_metadata(filepath)
+            print(f"[Background] Successfully extracted metadata for photo {photo_id}")
+        except Exception as metadata_error:
+            print(f"[Background] Metadata analysis failed for photo {photo_id}: {metadata_error}")
+            print(f"[Background] Falling back to ImgBB upload + ImageDescriber...")
+            
+            # --- Fallback method: Upload to ImgBB and use ImageDescriber ---
+            try:
+                uploader = ImgBBUploader(expiration=600)
+                image_url = uploader.upload(filepath)
+                print(f"[Background] Image {photo_id} uploaded to ImgBB: {image_url}")
+                
+                describer = ImageDescriber()
+                print(f"[Background] Processing image {photo_id} with ImageDescriber...")
+                result = describer.describe_image(image_url)
+                print(f"[Background] Successfully described image using ImageDescriber")
+            except Exception as fallback_error:
+                raise Exception(f"Both metadata analysis and ImageDescriber failed - Primary: {str(metadata_error)}, Fallback: {str(fallback_error)}")
 
         tags = result.get("tags", [])
         caption = result.get("caption", "")
@@ -135,12 +158,6 @@ async def upload_photo(
     saved_filename = save_uploaded_file(content, file.filename)
     filepath = f"uploads/{saved_filename}"
 
-    try:
-        uploader = ImgBBUploader(expiration=600)
-        image_url = uploader.upload(filepath)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Image upload failed: {str(e)}")
-
     APP_DOMAIN = os.getenv("APP_DOMAIN")
     image_local_url = f"{APP_DOMAIN}uploads/{saved_filename}"
 
@@ -154,13 +171,12 @@ async def upload_photo(
     session.commit()
     session.refresh(photo)
 
-    # --- Schedule background task ---
+    # --- Schedule background task (includes ImgBB upload) ---
     if background_tasks:
         background_tasks.add_task(
             process_image_in_background,
             photo_id=photo.id,
-            filepath=filepath,
-            image_url=image_url
+            filepath=filepath
         )
 
     return UploadResponse(

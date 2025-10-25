@@ -66,3 +66,10 @@ class AlbumItem(BaseModel):
     album: List[PhotoItem]
 
 AlbumsResponse = List[AlbumItem]
+
+
+class GenerateImageResponse(BaseModel):
+    """Response for generating a similar image"""
+    description: str
+    generated_image_url: str
+    message: str

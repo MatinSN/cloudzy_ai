@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 from cloudzy.database import create_db_and_tables
-from cloudzy.routes import upload, photo, search
+from cloudzy.routes import upload, photo, search, generate
 from cloudzy.search_engine import SearchEngine
 import os
 
@@ -55,6 +55,7 @@ app.add_middleware(
 app.include_router(upload.router)
 app.include_router(photo.router)
 app.include_router(search.router)
+app.include_router(generate.router)
 
 UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -76,6 +77,7 @@ async def root():
             "list_photos": "GET /photos - List all photos",
             "search": "GET /search?q=... - Semantic search",
             "image_to_image": "POST /search/image-to-image - Similar images",
+            "generate_similar": "POST /generate-similar-image - Generate image from description",
             "docs": "/docs - Interactive API documentation",
         }
     }

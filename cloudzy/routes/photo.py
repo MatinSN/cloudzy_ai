@@ -81,7 +81,7 @@ async def list_photos(
 
 @router.get("/albums", response_model=AlbumsResponse)
 async def get_albums(
-    top_k: int = Query(5, ge=2, le=50),
+    top_k: int = Query(5, ge=1, le=5),
     session: Session = Depends(get_session),
 ):
     """

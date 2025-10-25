@@ -3,6 +3,7 @@ import faiss
 import numpy as np
 from typing import List, Tuple
 import os
+import random
 
 
 class SearchEngine:
@@ -19,20 +20,21 @@ class SearchEngine:
             base_index = faiss.IndexFlatL2(dim)
             self.index = faiss.IndexIDMap(base_index)
 
-    def create_albums(self, top_k: int = 5, distance_threshold: float = 0.3) -> List[List[int]]:
+    def create_albums(self, top_k: int = 5, distance_threshold: float = 0.3, album_size: int = 5) -> List[List[int]]:
         """
         Group similar images into albums (clusters).
         
-        For each unvisited photo, finds its top_k most similar photos and creates an album.
+        Returns exactly top_k albums, each containing up to album_size similar photos.
         Photos are marked as visited to avoid duplicate albums.
         Only includes photos within the distance threshold.
         
         Args:
-            top_k: Number of similar images to find for each album
-            distance_threshold: Maximum distance to consider photos as similar (default 0.5)
+            top_k: Number of albums to return
+            distance_threshold: Maximum distance to consider photos as similar (default 0.3)
+            album_size: How many similar photos to search for per album (default 5)
             
         Returns:
-            List of albums, each album is a list of photo_ids
+            List of top_k albums, each album is a list of photo_ids (randomized order each call)
         """
         from cloudzy.database import SessionLocal
         from cloudzy.models import Photo
@@ -45,11 +47,18 @@ class SearchEngine:
         # Get all photo IDs from FAISS index
         id_map = self.index.id_map
         all_ids = [id_map.at(i) for i in range(id_map.size())]
+        
+        # Shuffle for randomization - different albums each call
+        random.shuffle(all_ids)
 
         visited = set()
         albums = []
 
         for photo_id in all_ids:
+            # Stop if we have enough albums
+            if len(albums) >= top_k:
+                break
+            
             # Skip if already in an album
             if photo_id in visited:
                 continue
@@ -67,7 +76,7 @@ class SearchEngine:
                 
                 # Search for similar images
                 query_embedding = np.array(embedding).reshape(1, -1).astype(np.float32)
-                distances, ids = self.index.search(query_embedding, top_k)
+                distances, ids = self.index.search(query_embedding, album_size)
                 
                 # Build album: collect similar photos that haven't been visited and are within threshold
                 album = []
@@ -153,3 +162,42 @@ class SearchEngine:
             "dimension": self.dim,
             "index_type": type(self.index).__name__,
         }
+
+    def debug_distances(self, sample_size: int = 3) -> dict:
+        """Debug distances between photos to understand why albums aren't grouping"""
+        from cloudzy.database import SessionLocal
+        from cloudzy.models import Photo
+        from sqlmodel import select
+        
+        self.load()
+        if self.index.ntotal == 0:
+            return {"error": "No embeddings in index"}
+        
+        id_map = self.index.id_map
+        all_ids = [id_map.at(i) for i in range(min(id_map.size(), sample_size))]
+        
+        debug_info = {}
+        session = SessionLocal()
+        try:
+            for photo_id in all_ids:
+                photo = session.exec(select(Photo).where(Photo.id == photo_id)).first()
+                if not photo:
+                    continue
+                
+                embedding = photo.get_embedding()
+                if not embedding:
+                    continue
+                
+                query_embedding = np.array(embedding).reshape(1, -1).astype(np.float32)
+                distances, ids = self.index.search(query_embedding, 5)
+                
+                debug_info[photo_id] = {
+                    "top_5_results": [
+                        {"id": int(pid), "distance": float(d)} 
+                        for pid, d in zip(ids[0], distances[0]) if pid != -1
+                    ]
+                }
+        finally:
+            session.close()
+        
+        return debug_info
