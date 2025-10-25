@@ -76,12 +76,20 @@ result: {
 
         # Try to extract JSON-like dict from model output
         try:
-            if "{" not in text_content or "}" not in text_content:
-                raise ValueError("Response does not contain valid JSON structure (missing braces)")
+            if "{" not in text_content:
+                raise ValueError("Response does not contain valid JSON structure (missing opening brace)")
             
             start = text_content.index("{")
-            end = text_content.rindex("}") + 1
-            json_str = text_content[start:end]
+            
+            # Try to find closing brace
+            if "}" not in text_content[start:]:
+                # No closing brace found, try adding one
+                print(f"[Warning] No closing brace found in response, attempting to add closing brace...")
+                json_str = text_content[start:] + "}"
+            else:
+                end = text_content.rindex("}") + 1
+                json_str = text_content[start:end]
+            
             result = json.loads(json_str)
         except ValueError as ve:
             raise ValueError(f"Failed to parse model output: {text_content}\nError: {ve}")

@@ -101,13 +101,18 @@ result: {
         response_text = str(response) if response is not None else ""
         
         # Extract JSON part from response
-        # Look for the pattern: result: { ... }
-        match = re.search(r'result:\s*(\{[\s\S]*\})', response_text)
+        # Look for the pattern: result: { ... } (or { ... if closing brace is missing)
+        match = re.search(r'result:\s*(\{[\s\S]*)', response_text)
         
         if not match:
             raise ValueError(f"Could not find JSON in response: {response_text}")
         
         json_str = match.group(1)
+        
+        # If the extracted JSON doesn't end with }, try adding it
+        if not json_str.rstrip().endswith("}"):
+            print(f"[Warning] No closing brace found in JSON, attempting to add closing brace...")
+            json_str = json_str + "}"
         
         try:
             # Parse the JSON string into a dictionary
