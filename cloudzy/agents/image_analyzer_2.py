@@ -97,12 +97,15 @@ result: {
         
         response = self.agent.run(prompt, images=[image])
         
+        # Ensure response is a string
+        response_text = str(response) if response is not None else ""
+        
         # Extract JSON part from response
         # Look for the pattern: result: { ... }
-        match = re.search(r'result:\s*(\{[\s\S]*\})', response)
+        match = re.search(r'result:\s*(\{[\s\S]*\})', response_text)
         
         if not match:
-            raise ValueError(f"Could not find JSON in response: {response}")
+            raise ValueError(f"Could not find JSON in response: {response_text}")
         
         json_str = match.group(1)
         

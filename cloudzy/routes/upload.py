@@ -74,9 +74,22 @@ def process_image_in_background(photo_id: int, filepath: str):
     """
     from cloudzy.database import SessionLocal
     from sqlmodel import select
+    import time
     
     try:
         result = None
+        
+        # --- Verify file exists and is readable ---
+        file_path = Path(filepath)
+        max_retries = 5
+        retry_count = 0
+        while not file_path.exists() and retry_count < max_retries:
+            print(f"[Background] Waiting for file {filepath} to be written (attempt {retry_count + 1}/{max_retries})...")
+            time.sleep(0.5)
+            retry_count += 1
+        
+        if not file_path.exists():
+            raise FileNotFoundError(f"Image file not found at {filepath} after {max_retries} retries")
         
         # --- Primary method: Analyze metadata from local filepath ---
         try:

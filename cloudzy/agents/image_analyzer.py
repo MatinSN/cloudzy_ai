@@ -62,16 +62,31 @@ result: {
             ],
         )
 
-        # Extract message text
+        # Extract message text with robust type handling
         message = completion.choices[0].message
-        text_content = message.content.strip()
+        
+        # Safely convert to string, handling non-string types
+        if message.content is None:
+            text_content = ""
+        else:
+            text_content = str(message.content).strip()
+        
+        if not text_content:
+            raise ValueError("Model returned empty response")
 
         # Try to extract JSON-like dict from model output
         try:
+            if "{" not in text_content or "}" not in text_content:
+                raise ValueError("Response does not contain valid JSON structure (missing braces)")
+            
             start = text_content.index("{")
             end = text_content.rindex("}") + 1
             json_str = text_content[start:end]
             result = json.loads(json_str)
+        except ValueError as ve:
+            raise ValueError(f"Failed to parse model output: {text_content}\nError: {ve}")
+        except json.JSONDecodeError as je:
+            raise ValueError(f"Invalid JSON in model output: {text_content}\nError: {je}")
         except Exception as e:
             raise ValueError(f"Failed to parse model output: {text_content}\nError: {e}")
 
