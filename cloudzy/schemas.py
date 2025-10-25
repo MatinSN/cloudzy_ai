@@ -19,7 +19,8 @@ class PhotoResponse(BaseModel):
 
 class PhotoDetailResponse(PhotoResponse):
     """Detailed photo response with embedding info"""
-    embedding: Optional[List[float]] = None
+    # embedding: Optional[List[float]] = None
+    pass
 
 
 

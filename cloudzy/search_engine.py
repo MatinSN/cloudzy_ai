@@ -163,41 +163,4 @@ class SearchEngine:
             "index_type": type(self.index).__name__,
         }
 
-    def debug_distances(self, sample_size: int = 3) -> dict:
-        """Debug distances between photos to understand why albums aren't grouping"""
-        from cloudzy.database import SessionLocal
-        from cloudzy.models import Photo
-        from sqlmodel import select
-        
-        self.load()
-        if self.index.ntotal == 0:
-            return {"error": "No embeddings in index"}
-        
-        id_map = self.index.id_map
-        all_ids = [id_map.at(i) for i in range(min(id_map.size(), sample_size))]
-        
-        debug_info = {}
-        session = SessionLocal()
-        try:
-            for photo_id in all_ids:
-                photo = session.exec(select(Photo).where(Photo.id == photo_id)).first()
-                if not photo:
-                    continue
-                
-                embedding = photo.get_embedding()
-                if not embedding:
-                    continue
-                
-                query_embedding = np.array(embedding).reshape(1, -1).astype(np.float32)
-                distances, ids = self.index.search(query_embedding, 5)
-                
-                debug_info[photo_id] = {
-                    "top_5_results": [
-                        {"id": int(pid), "distance": float(d)} 
-                        for pid, d in zip(ids[0], distances[0]) if pid != -1
-                    ]
-                }
-        finally:
-            session.close()
-        
-        return debug_info
+  

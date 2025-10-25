@@ -97,12 +97,7 @@ result: {
         
         response = self.agent.run(prompt, images=[image])
         
-        # Handle both dict and string responses
-        if isinstance(response, dict):
-            # Response is already a dictionary
-            return response
-        
-        # If response is a string, extract JSON part
+        # Extract JSON part from response
         # Look for the pattern: result: { ... }
         match = re.search(r'result:\s*(\{[\s\S]*\})', response)
         
@@ -131,7 +126,7 @@ if __name__ == "__main__":
     agent = ImageAnalyzerAgent()
     
     # Test with first sample image
-    result = agent.analyze_image_metadata(sample_image_paths[0])
+    result = agent.retrieve_similar_images(sample_image_paths[0])
     print(f"\n=== Results ===")
     print(f"Description: {result}")
     # print(f"Similar images found: {len(result['similar_images'])}")

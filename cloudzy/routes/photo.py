@@ -37,7 +37,7 @@ async def get_photo(
         image_url = f"{APP_DOMAIN}uploads/{photo.filename}",
         tags=photo.get_tags(),
         caption=photo.caption,
-        embedding=photo.get_embedding(),
+        # embedding=photo.get_embedding(),
         created_at=photo.created_at,
     )
 
@@ -72,7 +72,7 @@ async def list_photos(
             image_url = f"{APP_DOMAIN}uploads/{photo.filename}",
             tags=photo.get_tags(),
             caption=photo.caption,
-            embedding=photo.get_embedding(),
+            # embedding=photo.get_embedding(),
             created_at=photo.created_at,
         )
         for photo in photos

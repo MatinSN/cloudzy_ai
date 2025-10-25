@@ -1,136 +1,73 @@
-================================================================================
-                        AI USAGE REPORT (SUMMARY)
-           Cloudzy AI Challenge - Photo Album Management System
-================================================================================
+AI USAGE REPORT - Cloudzy AI Challenge
+========================================
 
-PROJECT OVERVIEW
-================
-AI-enhanced photo management system with semantic search, album summarization,
-and image generation capabilities.
+PROJECT OVERVIEW:
+FastAPI-based photo management system with semantic search, AI image analysis, and text-to-image generation.
 
-================================================================================
-AI MODELS USED
-================================================================================
-
-1. IMAGE EMBEDDING: intfloat/multilingual-e5-large
-   - Location: cloudzy/ai_utils.py (ImageEmbeddingGenerator)
-   - Purpose: Convert photo metadata into 1024-d vectors for similarity search
-   - Used in: Photo upload, semantic search, album clustering
-
-2. SUMMARIZATION: facebook/bart-large-cnn
-   - Location: cloudzy/ai_utils.py (TextSummarizer)
-   - Purpose: Generate summaries of photo clusters
-   - Used in: /albums endpoint (creates album descriptions)
-
-3. IMAGE ANALYSIS: Google Gemini 2.0-flash
-   - Location: cloudzy/agents/image_analyzer_2.py (ImageAnalyzerAgent)
-   - Purpose: Analyze images and generate detailed descriptions
-   - Used in: /generate-similar-image endpoint (Step 1)
-
-4. IMAGE GENERATION: black-forest-labs/FLUX.1-dev
-   - Location: cloudzy/inference_models/text_to_image.py (TextToImageGenerator)
-   - Purpose: Generate high-quality images from text prompts
-   - Used in: /generate-similar-image endpoint (Step 3)
-
-================================================================================
-MANUAL VS AI-GENERATED
-================================================================================
-
-MANUAL WORK (100% Developer-Written):
-✓ Database schema, API routes, file management
-✓ FastAPI application setup and middleware
-✓ Error handling and validation logic
-✓ File upload service and utilities
-✓ FAISS vector search implementation
-
-HYBRID (Manual Integration + AI Models):
-✓ ImageEmbeddingGenerator: Text → 1024-d embeddings (AI model)
-✓ TextSummarizer: Metadata → album summary (AI model)
-✓ ImageAnalyzerAgent: Image → description (AI model)
-✓ TextToImageGenerator: Prompt → generated image (AI model)
-
-AI-GENERATED CONTENT:
-✓ Embedding vectors (semantic representations)
-✓ Album summaries (cluster descriptions)
-✓ Image descriptions (visual analysis)
-✓ Generated images (from text prompts)
-
-================================================================================
-NEW ENDPOINT: /generate-similar-image
-================================================================================
-
-Endpoint: POST /generate-similar-image
-Location: cloudzy/routes/generate.py
-
-Workflow:
-1. User uploads an image
-2. ImageAnalyzerAgent analyzes it → gets description
-3. TextToImageGenerator creates new image from description
-4. Returns generated image URL + description
-
-Response:
-{
-  "description": "Detailed image analysis from Gemini",
-  "generated_image_url": "http://127.0.0.1:8000/uploads/generated_20241025_123456_789.png",
-  "message": "Similar image generated successfully"
-}
-
-Performance: ~40-75 seconds per request
-- Image analysis: ~5-10s (Gemini)
-- Image generation: ~30-60s (FLUX.1-dev)
-
-================================================================================
-PROMPTS USED IN PROJECT
-================================================================================
-
-1. IMAGE ANALYSIS PROMPT (ImageAnalyzerAgent - Gemini):
-   Location: cloudzy/agents/image_analyzer_2.py
+WHERE & HOW AI WAS USED:
+1. Image Analysis - Structured Metadata (cloudzy/agents/image_analyzer.py)
+   - Tool: Qwen/Qwen3-VL-8B-Instruct model via HuggingFace API
+   - Function: Auto-generate tags, descriptions, and captions for uploaded photos
    
-   "Describe this image in a way that could be used as a prompt for generating 
-   a new image inspired by it. Focus on the main subjects, composition, style, 
-   mood, and colors. Avoid mentioning specific names or exact details — instead, 
-   describe the overall aesthetic and atmosphere so the result feels similar but 
-   not identical."
+1b. Image Analysis - Aesthetic Descriptions (cloudzy/agents/image_analyzer_2.py)
+   - Tool: Gemini-2.0-Flash model via smolagents + OpenAI-compatible API
+   - Function: Generate aesthetic image descriptions for inspiration-based generation
+   
+2. Text-to-Image Generation (cloudzy/inference_models/text_to_image.py)
+   - Tool: FLUX.1-dev model via HuggingFace Inference API
+   - Function: Generate images from text prompts
+   
+3. Semantic Search (cloudzy/search_engine.py + cloudzy/routes/search.py)
+   - Tool: FAISS (vector database) with embeddings
+   - Function: Find visually similar photos via embedding vectors
 
-2. IMAGE GENERATION PROMPT:
-   - Input: Description from ImageAnalyzerAgent (above)
-   - Model: FLUX.1-dev (black-forest-labs/FLUX.1-dev)
-   - Location: cloudzy/inference_models/text_to_image.py
-   - Strategy: Direct prompt passing to image generation model
+PROMPTS & MODEL INPUTS:
+Image Analysis Prompt #1 - Structured Metadata (image_analyzer.py):
+"Describe this image in the following exact format: result: {tags: [...], description: '...', caption: '...'}"
+- Input: Image URL sent to vision model
+- Model ingests structured format request to ensure JSON output
 
-================================================================================
-ENVIRONMENT VARIABLES
-================================================================================
+Image Analysis Prompt #2 - Generative Inspiration (image_analyzer_2.py, Gemini via smolagents):
+"Describe this image in a way that could be used as a prompt for generating a new image inspired by it.
+Focus on the main subjects, composition, style, mood, and colors.
+Avoid mentioning specific names or exact details — instead, describe the overall aesthetic and atmosphere so the result feels similar but not identical."
+- Input: Local image file sent to Gemini-2.0-Flash model
+- Designed for generating aesthetic descriptions usable as prompts for image generation
 
-Required:
-- HF_TOKEN: Hugging Face API key (embeddings, summarization)
-- GEMINI_API_KEY: Google Gemini API key (image analysis)
-- HF_TOKEN_1: Alternative HF token (image generation)
-- APP_DOMAIN: App URL (default: http://127.0.0.1:8000/)
+Search Queries:
+- User text → converted to embeddings → matched against photo database
+- Album creation: Groups similar photos by distance threshold (randomized each call)
 
-================================================================================
-KEY DECISIONS
-================================================================================
+MODEL OUTPUTS REFINED:
+✓ JSON parsing: Extracted structured data from model text response
+✓ Distance threshold tuning: Adjusted for FAISS L2 distance (default 0.3)
+✓ Album randomization: Added random.shuffle() to prevent deterministic groupings
+✓ Error handling: Wrapped API failures to graceful fallbacks
 
-1. Used FLUX.1-dev for high-quality image generation (vs Stable Diffusion)
-2. Composable pipeline: ImageAnalyzer → TextToImageGenerator (reusable components)
-3. Graceful error handling with fallbacks when APIs unavailable
-4. Temporary file handling: saves uploads locally for Gemini analysis
+MANUAL VS AI-GENERATED (BREAKDOWN):
+AI-Generated (65%):
+- Model integration boilerplate (API clients, token management)
+- FAISS index structure and search logic
+- Vision model prompt formatting
+- Default model selections (Qwen3-VL-8B, FLUX.1-dev)
 
-================================================================================
-SUMMARY
-================================================================================
+Manual Refinements (35%):
+- Database schema design (Photo, embeddings storage)
+- FastAPI route structure and error handling
+- Album clustering algorithm and break conditions
+- Distance threshold validation and tuning
+- File upload validation and storage management
+- CORS middleware configuration
 
-This project integrates 4 AI models responsibly:
-- Embeddings for semantic search
-- Summarization for album descriptions
-- Vision AI for image analysis
-- Generative AI for image creation
+KEY TECHNICAL DECISIONS:
+1. Distance threshold = 0.3: Filters visually similar photos
+2. Model choice: Qwen3-VL for balanced speed/quality
+3. FLUX.1-dev: High-quality image generation over speed
+4. Random album creation: Ensures different groupings per request
+5. HuggingFace Hub: Leveraged pre-tuned models vs training custom
 
-All manual work handles infrastructure, logic, validation, and error handling.
-AI models are called for their specialized tasks only.
-
-New capability: Generate creative image variations from uploaded photos using
-intelligent analysis + high-quality generation pipeline.
-
-================================================================================
+FILES MODIFIED FOR IMPROVEMENTS:
+- search_engine.py: Added randomization + album count control
+- image_analyzer.py: JSON error handling for vision model output
+- image_analyzer_2.py: Agentic image analysis with Gemini-2.0-Flash for aesthetic descriptions
+- text_to_image.py: Timestamp-based filename collision prevention
