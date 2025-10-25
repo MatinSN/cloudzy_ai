@@ -13,3 +13,5 @@ setuptools>=68.0
 openai==2.6.0
 huggingface_hub
 decorator==5.1.1
+smolagents[toolkit]
+google-generativeai
