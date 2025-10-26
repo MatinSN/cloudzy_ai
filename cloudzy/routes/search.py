@@ -21,56 +21,47 @@ async def search_photos(
     session: Session = Depends(get_session),
 ):
     """
-    Semantic search for similar photos using FAISS.
-    
-    Converts query to embedding and finds most similar images.
-    
+    Semantic search endpoint using FAISS.
+
     Args:
         q: Search query (used to generate embedding)
         top_k: Number of results to return (max 50)
-    
-    Returns: List of similar photos with distance scores
+
+    Returns: List of similar photos
     """
 
     generator = ImageEmbeddingGenerator()
     query_embedding = generator._embed_text(q)
 
-
-    
-    # Search in FAISS
     search_engine = SearchEngine()
     search_results = search_engine.search(query_embedding, top_k=top_k)
-    
-    
+
     if not search_results:
         return SearchResponse(
             query=q,
             results=[],
             total_results=0,
         )
-    
-    APP_DOMAIN = os.getenv("APP_DOMAIN")
 
-    
-    
-    # Fetch photo details from database
+    APP_DOMAIN = os.getenv("APP_DOMAIN")
     result_objects = []
+
     for photo_id, distance in search_results:
         statement = select(Photo).where(Photo.id == photo_id)
         photo = session.exec(statement).first()
-        
-        if photo:  # Only include if photo exists in DB
+
+        if photo:
             result_objects.append(
                 SearchResult(
                     photo_id=photo.id,
                     filename=photo.filename,
-                    image_url = f"{APP_DOMAIN}uploads/{photo.filename}",
+                    image_url=f"{APP_DOMAIN}uploads/{photo.filename}",
                     tags=photo.get_tags(),
                     caption=photo.caption,
                     distance=distance,
                 )
             )
-    
+
     return SearchResponse(
         query=q,
         results=result_objects,

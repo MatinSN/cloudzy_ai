@@ -1,24 +1,28 @@
 import os
 import numpy as np
 from huggingface_hub import InferenceClient
+from typing import List, Dict, Tuple
+import re
 
 from dotenv import load_dotenv
 load_dotenv()
 
+
+
 class ImageEmbeddingGenerator:
-    def __init__(self, model_name: str = "intfloat/multilingual-e5-large"):
+    def __init__(self, model_name: str = "Qwen/Qwen3-Embedding-8B"):
         """
         Initialize the embedding generator with a Hugging Face model.
         """
         self.client = InferenceClient(
-            provider="hf-inference",
+            provider="nebius",
             api_key=os.environ["HF_TOKEN_1"],
         )
         self.model_name = model_name
 
     def generate_embedding(self, tags: list[str], description: str, caption: str) -> np.ndarray:
         """
-        Generate a 512-d embedding for an image using its tags, description, and caption.
+        Generate a 4096-d embedding for an image using its tags, description, and caption.
 
         Args:
             tags: List of tags related to the image
@@ -26,7 +30,7 @@ class ImageEmbeddingGenerator:
             caption: Short caption for the image
 
         Returns:
-            embedding: 1D numpy array of shape (512,)
+            embedding: 1D numpy array of shape (4096,), normalized to unit length
         """
         # Combine text fields into a single string
         text = " ".join(tags) + " " + description + " " + caption
@@ -40,9 +44,15 @@ class ImageEmbeddingGenerator:
         # Convert to numpy array
         embedding = np.array(result, dtype=np.float32).reshape(-1)
         
-        # Ensure shape is (512,)
-        if embedding.shape[0] != 1024:
-            raise ValueError(f"Expected embedding of size 512, got {embedding.shape[0]}")
+        # Ensure shape is (4096,)
+        if embedding.shape[0] != 4096:
+            raise ValueError(f"Expected embedding of size 4096, got {embedding.shape[0]}")
+        
+        # Normalize to unit length (L2 normalization)
+        # This ensures distances stay consistent across models and dimensions
+        norm = np.linalg.norm(embedding)
+        if norm > 0:
+            embedding = embedding / norm
         
         return embedding
     
@@ -50,6 +60,7 @@ class ImageEmbeddingGenerator:
     def _embed_text(self, text: str) -> np.ndarray:
         """
         Internal helper to call Hugging Face feature_extraction and return a numpy array.
+        Embeddings are normalized to unit length for consistent distance calculations.
         """
         result = self.client.feature_extraction(
             text,
@@ -57,9 +68,17 @@ class ImageEmbeddingGenerator:
         )
         embedding = np.array(result, dtype=np.float32).reshape(-1)
 
-        if embedding.shape[0] != 1024:
-            raise ValueError(f"Expected embedding of size 1024, got {embedding.shape[0]}")
+        if embedding.shape[0] != 4096:
+            raise ValueError(f"Expected embedding of size 4096, got {embedding.shape[0]}")
+        
+        # Normalize to unit length (L2 normalization)
+        norm = np.linalg.norm(embedding)
+        if norm > 0:
+            embedding = embedding / norm
+        
         return embedding
+
+
 
 
 class TextSummarizer:

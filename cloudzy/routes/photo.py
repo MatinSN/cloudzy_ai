@@ -89,7 +89,7 @@ async def get_albums(
     """
 
     search_engine = SearchEngine()
-    albums_ids = search_engine.create_albums(top_k=top_k)
+    albums_ids = search_engine.create_albums_kmeans(top_k=top_k)
     APP_DOMAIN = os.getenv("APP_DOMAIN") or "http://127.0.0.1:8000/"
     summarizer = TextSummarizer()
 

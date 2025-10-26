@@ -18,8 +18,8 @@ WHERE & HOW AI WAS USED:
    - Function: Generate images from text prompts
    
 3. Semantic Search (cloudzy/search_engine.py + cloudzy/routes/search.py)
-   - Tool: FAISS (vector database) with embeddings
-   - Function: Find visually similar photos via embedding vectors
+   - Tool: FAISS (vector database) with embeddings from Qwen/Qwen3-Embedding-8B (4096-dimensional)
+   - Function: Find visually similar photos via L2-normalized embedding vectors
 
 PROMPTS & MODEL INPUTS:
 Image Analysis Prompt #1 - Structured Metadata (image_analyzer.py):
@@ -39,8 +39,10 @@ Search Queries:
 - Album creation: Groups similar photos by distance threshold (randomized each call)
 
 MODEL OUTPUTS REFINED:
-✓ JSON parsing: Extracted structured data from model text response
-✓ Distance threshold tuning: Adjusted for FAISS L2 distance (default 0.3)
+✓ JSON parsing: Extracted structured data from model text response (with dict type-check for Gemini responses)
+✓ Embedding model upgrade: Migrated from multilingual-e5-large (1024-d) to Qwen3-Embedding-8B (4096-d)
+✓ L2 normalization: Added unit-vector normalization to embeddings for consistent distance calculations
+✓ Distance threshold tuning: Adjusted for normalized embeddings (0.5 → 1.0 for search, 0.3 → 1.5 for albums)
 ✓ Album randomization: Added random.shuffle() to prevent deterministic groupings
 ✓ Error handling: Wrapped API failures to graceful fallbacks
 
@@ -60,14 +62,22 @@ Manual Refinements (35%):
 - CORS middleware configuration
 
 KEY TECHNICAL DECISIONS:
-1. Distance threshold = 0.3: Filters visually similar photos
-2. Model choice: Qwen3-VL for balanced speed/quality
-3. FLUX.1-dev: High-quality image generation over speed
-4. Random album creation: Ensures different groupings per request
-5. HuggingFace Hub: Leveraged pre-tuned models vs training custom
+1. Embedding model: Qwen3-Embedding-8B (4096-d) for better semantic understanding than smaller models
+2. L2 normalization: Ensures normalized distances (0-2 range) independent of embedding dimension
+3. Distance thresholds: search() ≤ 1.0, create_albums() ≤ 1.5 (optimized for normalized embeddings)
+4. Model choice: Qwen3-VL for balanced speed/quality in image analysis
+5. FLUX.1-dev: High-quality image generation over speed
+6. Random album creation: Ensures different groupings per request
+7. HuggingFace Hub: Leveraged pre-tuned models vs training custom
 
 FILES MODIFIED FOR IMPROVEMENTS:
-- search_engine.py: Added randomization + album count control
+- ai_utils.py: Added L2 normalization to both generate_embedding() and _embed_text() methods
+- search_engine.py: Updated distance thresholds (0.5→1.0 search, 0.3→1.5 albums) for normalized embeddings
 - image_analyzer.py: JSON error handling for vision model output
-- image_analyzer_2.py: Agentic image analysis with Gemini-2.0-Flash for aesthetic descriptions
+- image_analyzer_2.py: Dict type-check for Gemini responses + agentic image analysis with Gemini-2.0-Flash
 - text_to_image.py: Timestamp-based filename collision prevention
+
+EMBEDDING UPGRADE SUMMARY:
+Old: multilingual-e5-large (1024-dimensional, unnormalized)
+New: Qwen/Qwen3-Embedding-8B (4096-dimensional, L2-normalized)
+Benefit: Better semantic understanding + consistent distance calculations across query types

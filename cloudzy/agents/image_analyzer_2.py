@@ -97,29 +97,43 @@ result: {
         
         response = self.agent.run(prompt, images=[image])
         
-        # Ensure response is a string
-        response_text = str(response) if response is not None else ""
+        # If response is already a dict, return it directly
+        if isinstance(response, dict):
+            return response
         
-        # Extract JSON part from response
-        # Look for the pattern: result: { ... } (or { ... if closing brace is missing)
-        match = re.search(r'result:\s*(\{[\s\S]*)', response_text)
+        # Safely convert to string, handling non-string types
+        if response is None:
+            text_content = ""
+        else:
+            text_content = str(response).strip()
         
-        if not match:
-            raise ValueError(f"Could not find JSON in response: {response_text}")
-        
-        json_str = match.group(1)
-        
-        # If the extracted JSON doesn't end with }, try adding it
-        if not json_str.rstrip().endswith("}"):
-            print(f"[Warning] No closing brace found in JSON, attempting to add closing brace...")
-            json_str = json_str + "}"
-        
+        if not text_content:
+            raise ValueError("Model returned empty response")
+
+        # Try to extract JSON-like dict from model output
         try:
-            # Parse the JSON string into a dictionary
-            result_dict = json.loads(json_str)
-            return result_dict
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse JSON from response: {json_str}\nError: {str(e)}")
+            if "{" not in text_content:
+                raise ValueError("Response does not contain valid JSON structure (missing opening brace)")
+            
+            start = text_content.index("{")
+            
+            # Try to find closing brace
+            if "}" not in text_content[start:]:
+                # No closing brace found, try adding one
+                print(f"[Warning] No closing brace found in response, attempting to add closing brace...")
+                json_str = text_content[start:] + "}"
+            else:
+                end = text_content.rindex("}") + 1
+                json_str = text_content[start:end]
+            
+            result = json.loads(json_str)
+            return result
+        except ValueError as ve:
+            raise ValueError(f"Failed to parse model output: {text_content}\nError: {ve}")
+        except json.JSONDecodeError as je:
+            raise ValueError(f"Invalid JSON in model output: {text_content}\nError: {je}")
+        except Exception as e:
+            raise ValueError(f"Failed to parse model output: {text_content}\nError: {e}")
 
 
 # Test with sample images
