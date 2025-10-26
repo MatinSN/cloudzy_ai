@@ -81,15 +81,23 @@ async def list_photos(
 
 @router.get("/albums", response_model=AlbumsResponse)
 async def get_albums(
-    top_k: int = Query(5, ge=1, le=5),
+    top_k: int = Query(2, ge=1, le=5),
     session: Session = Depends(get_session),
 ):
     """
     Create albums of semantically similar photos.
+    
+    Returns albums of grouped photos. If fewer images exist than requested albums,
+    returns what's available instead of an empty list.
     """
 
     search_engine = SearchEngine()
-    albums_ids = search_engine.create_albums(top_k=top_k)
+    albums_ids = search_engine.create_albums_kmeans(top_k=top_k)
+    
+    # Handle case where no albums were created (no images in database)
+    if not albums_ids:
+        return []
+    
     APP_DOMAIN = os.getenv("APP_DOMAIN") or "http://127.0.0.1:8000/"
     summarizer = TextSummarizer()
 

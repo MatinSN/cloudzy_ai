@@ -24,9 +24,10 @@ class SearchEngine:
         """
         Group similar images into albums (clusters).
         
-        Returns exactly top_k albums, each containing up to album_size similar photos.
+        Returns up to top_k albums, each containing up to album_size similar photos.
         Photos are marked as visited to avoid duplicate albums.
         Only includes photos within the distance threshold.
+        Automatically adjusts if fewer images than requested albums.
         
         OPTIMIZATIONS:
         - Batch retrieves all photos in ONE database query (not per-photo)
@@ -34,12 +35,13 @@ class SearchEngine:
         - Single session for all DB operations
         
         Args:
-            top_k: Number of albums to return
+            top_k: Number of albums to return (returns fewer if not enough images)
             distance_threshold: Maximum distance to consider photos as similar (default 1.0 for normalized embeddings)
             album_size: How many similar photos to search for per album (default 5)
             
         Returns:
-            List of top_k albums, each album is a list of photo_ids (randomized order each call)
+            List of up to top_k albums, each album is a list of photo_ids (randomized order each call)
+            Returns empty list if no images exist.
         """
         from cloudzy.database import SessionLocal
         from cloudzy.models import Photo
@@ -115,17 +117,23 @@ class SearchEngine:
         - All photos get assigned to a cluster (no "orphans")
         - Deterministic results for same seed
         - Much faster for large datasets
+        - Automatically adjusts if fewer images than requested clusters
         
         Args:
             top_k: Number of clusters (albums) to create
             seed: Random seed for reproducibility
             
         Returns:
-            List of top_k albums, each album is a list of photo_ids
+            List of albums, each album is a list of photo_ids. 
+            Returns up to top_k albums, or fewer if total images < top_k.
+            Returns empty list if no images exist.
         """
         self.load()
-        if self.index.ntotal < top_k:
+        if self.index.ntotal == 0:
             return []
+
+        # Adjust k to not exceed total number of images
+        actual_k = min(top_k, self.index.ntotal)
 
         # Get all photo IDs from FAISS index
         id_map = self.index.id_map
@@ -135,10 +143,10 @@ class SearchEngine:
         underlying_index = faiss.downcast_index(self.index.index)
         all_embeddings = underlying_index.reconstruct_n(0, self.index.ntotal).astype(np.float32)
         
-        # ✅ Run k-means clustering
+        # ✅ Run k-means clustering with adjusted k
         kmeans = faiss.Kmeans(
             d=self.dim,
-            k=top_k,
+            k=actual_k,
             niter=20,
             verbose=False,
             seed=seed
@@ -149,7 +157,7 @@ class SearchEngine:
         distances, cluster_assignments = kmeans.index.search(all_embeddings, 1)
         
         # Group photos by cluster
-        albums = [[] for _ in range(top_k)]
+        albums = [[] for _ in range(actual_k)]
         for photo_id, cluster_id in zip(all_ids, cluster_assignments.flatten()):
             albums[cluster_id].append(int(photo_id))
         
