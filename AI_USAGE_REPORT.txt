@@ -77,7 +77,3 @@ FILES MODIFIED FOR IMPROVEMENTS:
 - image_analyzer_2.py: Dict type-check for Gemini responses + agentic image analysis with Gemini-2.0-Flash
 - text_to_image.py: Timestamp-based filename collision prevention
 
-EMBEDDING UPGRADE SUMMARY:
-Old: multilingual-e5-large (1024-dimensional, unnormalized)
-New: Qwen/Qwen3-Embedding-8B (4096-dimensional, L2-normalized)
-Benefit: Better semantic understanding + consistent distance calculations across query types
