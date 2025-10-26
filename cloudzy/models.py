@@ -12,6 +12,7 @@ class Photo(SQLModel, table=True):
     filepath: str  # Full path to stored image
     tags: str = Field(default="[]")  # JSON string of tags
     caption: str = Field(default="")
+    description: str = Field(default="")
     embedding: Optional[str] = Field(default=None)  # JSON string of embedding vector
     created_at: datetime = Field(default_factory=datetime.utcnow)
     

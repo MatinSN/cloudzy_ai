@@ -58,6 +58,7 @@ async def search_photos(
                     image_url=f"{APP_DOMAIN}uploads/{photo.filename}",
                     tags=photo.get_tags(),
                     caption=photo.caption,
+                    description=photo.description,
                     distance=distance,
                 )
             )

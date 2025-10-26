@@ -9,6 +9,7 @@ class PhotoResponse(BaseModel):
     id: int
     filename: str
     image_url: str
+    description: str
     tags: List[str]
     caption: str
     created_at: datetime
@@ -31,6 +32,7 @@ class SearchResult(BaseModel):
     image_url: str
     tags: List[str]
     caption: str
+    description: str
     distance: float  # L2 distance (lower is more similar)
     
     class Config:
@@ -60,6 +62,7 @@ class PhotoItem(BaseModel):
     image_url: str
     tags: List[str]
     caption: str
+    description: str
     distance: float
 
 class AlbumItem(BaseModel):

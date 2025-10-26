@@ -127,6 +127,7 @@ def process_image_in_background(photo_id: int, filepath: str):
             photo = session.exec(select(Photo).where(Photo.id == photo_id)).first()
             if photo:
                 photo.caption = caption
+                photo.description = description
                 photo.set_tags(tags)
                 photo.set_embedding(embedding.tolist())
                 session.add(photo)

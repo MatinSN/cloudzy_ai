@@ -37,7 +37,7 @@ async def get_photo(
         image_url = f"{APP_DOMAIN}uploads/{photo.filename}",
         tags=photo.get_tags(),
         caption=photo.caption,
-        # embedding=photo.get_embedding(),
+        description=photo.description,
         created_at=photo.created_at,
     )
 
@@ -72,7 +72,7 @@ async def list_photos(
             image_url = f"{APP_DOMAIN}uploads/{photo.filename}",
             tags=photo.get_tags(),
             caption=photo.caption,
-            # embedding=photo.get_embedding(),
+            description=photo.description,
             created_at=photo.created_at,
         )
         for photo in photos
@@ -89,7 +89,7 @@ async def get_albums(
     """
 
     search_engine = SearchEngine()
-    albums_ids = search_engine.create_albums_kmeans(top_k=top_k)
+    albums_ids = search_engine.create_albums(top_k=top_k)
     APP_DOMAIN = os.getenv("APP_DOMAIN") or "http://127.0.0.1:8000/"
     summarizer = TextSummarizer()
 
@@ -127,6 +127,7 @@ async def get_albums(
                     image_url=f"{APP_DOMAIN}uploads/{photo.filename}",
                     tags=photo.get_tags(),
                     caption=photo.caption,
+                    description=photo.description,
                     distance=float(distance_val),
                 )
             )
