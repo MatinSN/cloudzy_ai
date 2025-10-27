@@ -141,18 +141,18 @@ async def get_albums(
             )
             
             # Collect descriptions for album summary
-            if photo.caption:
-                album_descriptions.append(photo.caption)
-            tags = photo.get_tags()
-            if tags:
-                album_descriptions.append(" ".join(tags))
+            # if photo.caption:
+            #     album_descriptions.append(photo.caption)
+            # tags = photo.get_tags()
+            # if tags:
+            #     album_descriptions.append(" ".join(tags))
 
         # Generate album summary from compiled descriptions
-        combined_description = " ".join(album_descriptions)
-        album_summary = summarizer.summarize(combined_description)
+        # combined_description = " ".join(album_descriptions)
+        # album_summary = summarizer.summarize(combined_description)
         
         albums_response.append(
-            AlbumItem(album_summary=album_summary, album=album_photos)
+            AlbumItem( album=album_photos)
         )
 
     return albums_response

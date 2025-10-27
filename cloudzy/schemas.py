@@ -66,7 +66,7 @@ class PhotoItem(BaseModel):
     distance: float
 
 class AlbumItem(BaseModel):
-    album_summary: str
+    # album_summary: str
     album: List[PhotoItem]
 
 AlbumsResponse = List[AlbumItem]
