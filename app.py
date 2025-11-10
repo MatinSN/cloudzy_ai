@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI app
 app = FastAPI(
-    title="Cloudzy AI",
+    title="Image tagging and search with AI",
     description="Cloud photo management with AI tagging, captioning, and semantic search",
     version="1.0.0",
     lifespan=lifespan,

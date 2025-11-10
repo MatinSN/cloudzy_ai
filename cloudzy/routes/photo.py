@@ -92,7 +92,7 @@ async def get_albums(
     """
 
     search_engine = SearchEngine()
-    albums_ids = search_engine.create_albums_kmeans(top_k=top_k)
+    albums_ids = search_engine.create_albums(top_k=top_k)
     
     # Handle case where no albums were created (no images in database)
     if not albums_ids:
