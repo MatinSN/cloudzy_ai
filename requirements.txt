@@ -12,6 +12,5 @@ pydantic-settings==2.1.0
 setuptools>=68.0
 openai==2.6.0
 huggingface_hub
-decorator==5.1.1
 smolagents==1.22.0
 google-generativeai
